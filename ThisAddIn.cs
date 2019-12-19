@@ -1,58 +1,47 @@
-﻿using System;
+﻿using Microsoft.Office.Interop.Outlook;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Xml.Linq;
-using Outlook = Microsoft.Office.Interop.Outlook;
-using Office = Microsoft.Office.Core;
-using Microsoft.Office.Interop.Outlook;
-using System.Net.Http;
 using System.IO;
 
 namespace Signature
 {
     public partial class ThisAddIn
-    {   
-        private void ThisAddIn_Startup(object sender, System.EventArgs e)
+    {
+
+        private void ThisAddIn_Startup(object sender, EventArgs e) => setupSignature();
+
+        private void ThisAddIn_Shutdown(object sender, EventArgs e) { }
+
+        void setupSignature()
         {
-            setupSignature();
-        }
-
-        private void ThisAddIn_Shutdown(object sender, System.EventArgs e) {}
-
-        async void setupSignature()
-        {
-            string htmlBody = "";
-
-            string template = @"Z:\Challenge Databases\Signature Management\signature.html";
-
-            using (StreamReader sr = new StreamReader(template))
-            {
-                htmlBody = await sr.ReadToEndAsync();
-            }
+            string htmlBody = File.ReadAllText("template.html");
 
             ExchangeUser currentUser = Application.Session.CurrentUser.AddressEntry.GetExchangeUser();
-            htmlBody = htmlBody.Replace("%%FirstName%%", currentUser.FirstName);
-            htmlBody = htmlBody.Replace("%%LastName%%", currentUser.LastName);
-            htmlBody = htmlBody.Replace("%%Title%%", currentUser.JobTitle);
-            htmlBody = htmlBody.Replace("%%PhoneNumber%%", currentUser.BusinessTelephoneNumber);
-            htmlBody = htmlBody.Replace("%%Email%%", currentUser.PrimarySmtpAddress);
 
-            string appDataDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Microsoft\\Signatures";
-            string targetFile = Path.Combine(appDataDir, "Challenge Signature.htm");
+            //Change the following variables to suit your signature's requirements. Anything is valid, including dynamic img URL's depending on user 
+            //For a list of properties, refer to https://docs.microsoft.com/en-us/dotnet/api/microsoft.office.interop.outlook.exchangeuser?view=outlook-pia 
 
-            if (File.Exists(targetFile)) File.Delete(targetFile);
-
-            using (FileStream fs = new FileStream(targetFile, FileMode.CreateNew, FileAccess.Write))
+            Dictionary<string, string> variableMap = new Dictionary<string, string>();
+            variableMap.Add("%%FirstName%%", currentUser.FirstName);
+            variableMap.Add("%%LastName%%", currentUser.LastName);
+            variableMap.Add("%%Title%%", currentUser.JobTitle);
+            variableMap.Add("%%PhoneNumber%%", currentUser.BusinessTelephoneNumber);
+            variableMap.Add("%%Email%%", currentUser.PrimarySmtpAddress);
+            if (currentUser.FirstName[0] == 'S')
             {
-                byte[] htmlBytes = Encoding.Default.GetBytes(htmlBody);
-                MemoryStream memoryStream = new MemoryStream(htmlBytes);
-                memoryStream.CopyTo(fs);
+                variableMap.Add("%%ImgURL%%", @"https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/apple/237/smiling-face-with-smiling-eyes_1f60a.png");
             }
 
+            foreach (KeyValuePair<string, string> map in variableMap) htmlBody = htmlBody.Replace(map.Key, map.Value);
+
+            string SignatureName = "Name not set";
+            string appDataDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Microsoft\\Signatures";
+            string targetFile = Path.Combine(appDataDir, SignatureName + ".htm");
+
+            File.WriteAllText(targetFile, htmlBody);
         }
 
-     
+
         #region VSTO generated code
 
         private void InternalStartup()
@@ -60,7 +49,7 @@ namespace Signature
             this.Startup += new System.EventHandler(ThisAddIn_Startup);
             this.Shutdown += new System.EventHandler(ThisAddIn_Shutdown);
         }
-        
+
         #endregion
     }
 }

@@ -8,11 +8,11 @@ namespace Signature
     public partial class ThisAddIn
     {
 
-        private void ThisAddIn_Startup(object sender, EventArgs e) => setupSignature();
+        private void ThisAddIn_Startup(object sender, EventArgs e) => SetupSignature();
 
         private void ThisAddIn_Shutdown(object sender, EventArgs e) { }
 
-        void setupSignature()
+        void SetupSignature()
         {
             string htmlBody = File.ReadAllText("template.html");
 
